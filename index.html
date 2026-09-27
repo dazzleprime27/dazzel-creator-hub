@@ -658,7 +658,11 @@ window.addEventListener('DOMContentLoaded', () => {
   navLinks.forEach(l=>l.addEventListener('click',e=>{e.preventDefault();const p=l.dataset.path;if(['home','projects','services','finance','analytics'].includes(p))showPage(p);}));
 
 
-  function closeModal(){projectModal.classList.add('hidden');projectModal.classList.remove('flex');}
+ 
+    function openModal(){
+  projectModal.classList.remove('hidden');
+  projectModal.classList.add('flex');
+}function closeModal(){projectModal.classList.add('hidden');projectModal.classList.remove('flex');}
   document.getElementById('projects-new-btn')?.addEventListener('click',openModal);
   document.querySelector('[data-path="new-project"]')?.addEventListener('click',e=>{e.preventDefault();openModal();});
   document.getElementById('new-project-close')?.addEventListener('click',closeModal); document.getElementById('new-project-cancel')?.addEventListener('click',closeModal);
