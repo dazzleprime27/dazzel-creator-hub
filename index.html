@@ -35,29 +35,18 @@
 </div>
 <!-- Financial Split Badges Grid -->
 <div class="grid grid-cols-3 gap-space-xs pt-1">
-<div class="p-2.5 rounded-lg bg-surface-container-lowest flex flex-col">
-<div class="flex items-center gap-1 text-tertiary-fixed">
-<span class="material-symbols-outlined text-[14px]">check_circle</span>
-<span class="font-label-sm text-label-sm font-semibold">Advance</span>
-</div>
-<span class="font-label-lg text-label-lg font-bold text-on-surface mt-1">₹98,000</span>
-<span class="font-body-sm text-[10px] text-on-surface-variant">61.2% locked</span>
-</div>
-<div class="p-2.5 rounded-lg bg-surface-container-lowest flex flex-col relative overflow-hidden">
-<div class="absolute top-0 right-0 w-1.5 h-1.5 bg-error rounded-bl"></div>
-<div class="flex items-center gap-1 text-error">
-<span class="material-symbols-outlined text-[14px]">pending_actions</span>
-<span class="font-label-sm text-label-sm font-semibold">Balance Due</span>
-</div>
-<span class="font-label-lg text-label-lg font-bold text-error mt-1">₹38,500</span>
-<span class="font-body-sm text-[10px] text-error font-medium">Urgent collection</span>
-</div>
-<div class="p-2.5 rounded-lg bg-surface-container-lowest flex flex-col">
-<div class="flex items-center gap-1 text-on-surface-variant">
-<span class="material-symbols-outlined text-[14px]">price_change</span>
-<span class="font-label-sm text-label-sm font-semibold">Discounts</span>
-</div>
-<span class="font-label-lg text-label-lg font-bold text-on-surface-variant mt-1">₹24,500</span>
+
+
+
+
+
+
+
+
+
+
+
+
 <span class="font-body-sm text-[10px] text-on-surface-variant">11.7% waived</span>
 </div>
 </div>
@@ -353,7 +342,7 @@
 <div class="flex items-center justify-between pt-1">
 <span class="font-label-sm text-label-sm text-error flex items-center gap-1">
 <span class="material-symbols-outlined text-[14px]">history_toggle_off</span>
-          Advance ₹7,500 • Due ₹7,500
+          
         </span>
 <span class="font-label-sm text-[11px] text-on-surface-variant">Renders Staged</span>
 </div>
@@ -564,15 +553,15 @@
         <input required name="project" class="h-11 rounded-lg bg-surface-container-highest px-3 outline-none" placeholder="e.g. Product Commercial">
       </label>
 
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 gap-3">
         <label class="flex flex-col gap-1.5">
           <span class="font-label-md font-bold">Total price ₹</span>
           <input required min="0" type="number" name="price" class="h-11 rounded-lg bg-surface-container-highest px-3 outline-none" placeholder="15000">
         </label>
-        <label class="flex flex-col gap-1.5">
-          <span class="font-label-md font-bold">Advance paid ₹</span>
-          <input min="0" type="number" name="advance" value="0" class="h-11 rounded-lg bg-surface-container-highest px-3 outline-none" placeholder="5000">
-        </label>
+        
+       
+         
+   
       </div>
 
       <div class="grid grid-cols-2 gap-3">
@@ -649,7 +638,7 @@ window.addEventListener('DOMContentLoaded', () => {
     updateStats(); updateFinance(); updateAnalytics();
   }
   function addProjectCard(data) {
-    const price=Math.max(0,Number(data.price)||0), advance=Math.min(price,Math.max(0,Number(data.advance)||0)), balance=price-advance;
+  const price=Math.max(0,Number(data.price)||0), balance=price;
     const progress=Math.min(100,Math.max(0,Number(data.progress)||0));
     const card=document.createElement('article'); card.className='project-card rounded-xl bg-surface-container p-space-md shadow-md cursor-pointer'; card.dataset.status=data.status; card.dataset.savedProject='true'; card.dataset.id=data.id;
     card.innerHTML=`<div class="flex items-start gap-3"><div class="w-16 h-16 rounded-lg bg-surface-container-highest flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-primary-container text-[28px]">movie</span></div><div class="flex-1 min-w-0"><div class="flex items-center justify-between gap-2"><span class="font-label-sm text-primary-container font-bold uppercase truncate">${escapeHtml(data.client)}</span><span class="px-2 py-0.5 rounded-full ${statusClass(data.status)} text-label-sm font-semibold">${statusText(data.status)}</span></div><h3 class="font-label-lg font-bold mt-1 truncate">${escapeHtml(data.project)}</h3><p class="font-body-sm text-on-surface-variant mt-0.5">Deadline: ${escapeHtml(data.deadline||'Not set')}</p><div class="flex items-center justify-between mt-3"><span class="font-label-md font-bold ${balance>0?'text-error':'text-tertiary-fixed'}">${money(balance)} balance</span><span class="font-label-sm text-on-surface-variant">${progress}% complete</span></div></div></div><div class="mt-3 h-1.5 rounded-full bg-surface-container-highest overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-primary-container to-secondary-container" style="width:${progress}%"></div></div>`;
@@ -668,7 +657,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   navLinks.forEach(l=>l.addEventListener('click',e=>{e.preventDefault();const p=l.dataset.path;if(['home','projects','services','finance','analytics'].includes(p))showPage(p);}));
 
-  function openModal(){projectModal.classList.remove('hidden');projectModal.classList.add('flex');projectForm.reset();projectForm.elements.advance.value=0;projectForm.elements.progress.value=0;}
+
   function closeModal(){projectModal.classList.add('hidden');projectModal.classList.remove('flex');}
   document.getElementById('projects-new-btn')?.addEventListener('click',openModal);
   document.querySelector('[data-path="new-project"]')?.addEventListener('click',e=>{e.preventDefault();openModal();});
@@ -677,7 +666,7 @@ window.addEventListener('DOMContentLoaded', () => {
   projectForm?.addEventListener('submit',e=>{e.preventDefault();const d=Object.fromEntries(new FormData(projectForm));d.id=uid();d.createdAt=new Date().toISOString();d.price=Math.max(0,Number(d.price)||0);d.advance=Math.min(d.price,Math.max(0,Number(d.advance)||0));d.progress=Math.min(100,Math.max(0,Number(d.progress)||0));const ps=loadProjects();ps.unshift(d);saveProjects(ps);closeModal();showPage('projects');renderProjects();});
   document.querySelectorAll('.project-filter').forEach(f=>f.addEventListener('click',()=>{document.querySelectorAll('.project-filter').forEach(b=>{b.classList.toggle('bg-primary-container',b===f);b.classList.toggle('text-surface-container-lowest',b===f);b.classList.toggle('bg-surface-container',b!==f);b.classList.toggle('text-on-surface-variant',b!==f);});document.querySelectorAll('.project-card').forEach(c=>c.classList.toggle('hidden',f.dataset.filter!=='all'&&c.dataset.status!==f.dataset.filter));}));
 
-  function renderDetails(id){const p=loadProjects().find(x=>x.id===id);currentProjectId=id;if(!p){detailsView.innerHTML='<p>Project not found.</p>';return;}const bal=Math.max(0,Number(p.price)-Number(p.advance));detailsView.innerHTML=`<div class="flex items-center gap-2"><button id="details-back" class="w-10 h-10 rounded-full bg-surface-container-highest"><span class="material-symbols-outlined">arrow_back</span></button><div><h1 class="font-headline-lg-mobile font-extrabold">Project Details</h1><p class="font-body-sm text-on-surface-variant">${escapeHtml(p.client)}</p></div></div><div class="rounded-xl bg-surface-container p-space-md"><div class="flex justify-between gap-3"><div><span class="font-label-sm text-primary-container font-bold uppercase">${escapeHtml(p.client)}</span><h2 class="font-headline-md font-bold mt-1">${escapeHtml(p.project)}</h2></div><span class="px-2 py-1 rounded-full ${statusClass(p.status)} text-label-sm font-bold h-fit">${statusText(p.status)}</span></div><div class="grid grid-cols-2 gap-3 mt-5"><div><span class="font-label-sm text-on-surface-variant">Total</span><b class="block mt-1">${money(p.price)}</b></div><div><span class="font-label-sm text-on-surface-variant">Balance</span><b class="block mt-1 text-error">${money(bal)}</b></div><div><span class="font-label-sm text-on-surface-variant">Advance</span><b class="block mt-1">${money(p.advance)}</b></div><div><span class="font-label-sm text-on-surface-variant">Deadline</span><b class="block mt-1">${escapeHtml(p.deadline||'—')}</b></div></div><div class="mt-5"><div class="flex justify-between font-label-sm"><span>Progress</span><b>${p.progress}%</b></div><div class="h-2 bg-surface-container-highest rounded-full mt-2 overflow-hidden"><div class="h-full bg-primary-container" style="width:${p.progress}%"></div></div></div>${p.notes?`<p class="font-body-sm text-on-surface-variant mt-4">${escapeHtml(p.notes)}</p>`:''}</div><div class="grid grid-cols-2 gap-3"><button id="details-finance" class="h-11 rounded-lg bg-surface-container font-label-md font-bold">Finance</button><button id="details-edit" class="h-11 rounded-lg bg-primary-container text-surface-container-lowest font-label-md font-bold">Edit later</button></div>`;document.getElementById('details-back').onclick=()=>showPage('projects');document.getElementById('details-finance').onclick=()=>showPage('finance');}
+  function renderDetails(id){const p=loadProjects().find(x=>x.id===id);currentProjectId=id;if(!p){detailsView.innerHTML='<p>Project not found.</p>';return;}const bal=Math.max(0,Number(p.price)-Number(p.advance));detailsView.innerHTML=`<div class="flex items-center gap-2"><button id="details-back" class="w-10 h-10 rounded-full bg-surface-container-highest"><span class="material-symbols-outlined">arrow_back</span></button><div><h1 class="font-headline-lg-mobile font-extrabold">Project Details</h1><p class="font-body-sm text-on-surface-variant">${escapeHtml(p.client)}</p></div></div><div class="rounded-xl bg-surface-container p-space-md"><div class="flex justify-between gap-3"><div><span class="font-label-sm text-primary-container font-bold uppercase">${escapeHtml(p.client)}</span><h2 class="font-headline-md font-bold mt-1">${escapeHtml(p.project)}</h2></div><span class="px-2 py-1 rounded-full ${statusClass(p.status)} text-label-sm font-bold h-fit">${statusText(p.status)}</span></div><div class="grid grid-cols-2 gap-3 mt-5"><div><span class="font-label-sm text-on-surface-variant">Total</span><b class="block mt-1">${money(p.price)}</b></div><div><span class="font-label-sm text-on-surface-variant">Balance</span><b class="block mt-1 text-error">${money(bal)}</b></div><div><span class="font-label-sm text-on-surface-variant"><div><span class="font-label-sm text-on-surface-variant">Deadline</span><b class="block mt-1">${escapeHtml(p.deadline||'—')}</b></div></div><div class="mt-5"><div class="flex justify-between font-label-sm"><span>Progress</span><b>${p.progress}%</b></div><div class="h-2 bg-surface-container-highest rounded-full mt-2 overflow-hidden"><div class="h-full bg-primary-container" style="width:${p.progress}%"></div></div></div>${p.notes?`<p class="font-body-sm text-on-surface-variant mt-4">${escapeHtml(p.notes)}</p>`:''}</div><div class="grid grid-cols-2 gap-3"><button id="details-finance" class="h-11 rounded-lg bg-surface-container font-label-md font-bold">Finance</button><button id="details-edit" class="h-11 rounded-lg bg-primary-container text-surface-container-lowest font-label-md font-bold">Edit later</button></div>`;document.getElementById('details-back').onclick=()=>showPage('projects');document.getElementById('details-finance').onclick=()=>showPage('finance');}
 
 function updateFinance(){const ps=loadProjects(),gross=ps.reduce((a,p)=>a+Number(p.price||0),0),adv=ps.reduce((a,p)=>a+Number(p.advance||0),0),due=gross-adv;document.getElementById('finance-summary').innerHTML=`<div class="p-4 rounded-xl bg-surface-container"><span class="font-label-sm text-on-surface-variant">Pipeline Value</span><b class="block text-xl mt-1">${money(gross)}</b></div><div class="p-4 rounded-xl bg-surface-container"><span class="font-label-sm text-on-surface-variant">Outstanding</span><b class="block text-xl mt-1 text-error">${money(due)}</b></div><div class="p-4 rounded-xl bg-surface-container"><span class="font-label-sm text-on-surface-variant">Collected</span><b class="block text-xl mt-1 text-tertiary-fixed">${money(adv)}</b></div><div class="p-4 rounded-xl bg-surface-container"><span class="font-label-sm text-on-surface-variant">Projects</span><b class="block text-xl mt-1">${ps.length}</b></div>`;document.getElementById('finance-list').innerHTML=ps.filter(p=>Number(p.price)-Number(p.advance)>0).map(p=>`<div class="p-3 rounded-lg bg-surface-container-high flex justify-between"><span>${escapeHtml(p.client)} — ${escapeHtml(p.project)}</span><b class="text-error">${money(Number(p.price)-Number(p.advance))}</b></div>`).join('')||'<p class="font-body-sm text-on-surface-variant">No outstanding balances.</p>';}
   function updateAnalytics(){const ps=loadProjects(),total=ps.length,avg=total?Math.round(ps.reduce((a,p)=>a+Number(p.progress||0),0)/total):0;document.getElementById('analytics-summary').innerHTML=`<div class="p-4 rounded-xl bg-surface-container"><span class="font-label-sm text-on-surface-variant">Projects</span><b class="block text-xl mt-1">${total}</b></div><div class="p-4 rounded-xl bg-surface-container"><span class="font-label-sm text-on-surface-variant">Avg Progress</span><b class="block text-xl mt-1">${avg}%</b></div>`;const counts={active:ps.filter(p=>p.status==='active').length,pending:ps.filter(p=>p.status==='pending').length,done:ps.filter(p=>p.status==='done').length};document.getElementById('analytics-bars').innerHTML=Object.entries(counts).map(([k,v])=>`<div><div class="flex justify-between font-label-sm"><span>${statusText(k)}</span><b>${v}</b></div><div class="h-2 bg-surface-container-highest rounded-full mt-1 overflow-hidden"><div class="h-full bg-primary-container" style="width:${total?Math.round(v/total*100):0}%"></div></div></div>`).join('');}
