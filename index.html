@@ -100,6 +100,26 @@ nav{position:fixed;z-index:20;bottom:12px;left:50%;transform:translateX(-50%);wi
     <div class="actions"><button class="primary" id="loginButton" onclick="login()">Sign In</button></div>
     <div id="loginMsg" class="small" style="margin-top:10px;text-align:center"></div>
   </div>
+<div class="overlay" id="resetModal" style="display:none;background:#070b16f5;z-index:110">
+  <div class="modal" style="max-width:430px">
+    <h3>Create a new password</h3>
+    <p class="small" style="margin-top:-8px;margin-bottom:14px">
+      Enter your new Dazzel Creator Hub password.
+    </p>
+    <div class="form">
+      <label>New password
+        <input id="resetPassword" type="password" autocomplete="new-password" placeholder="New password">
+      </label>
+      <label>Confirm password
+        <input id="resetPassword2" type="password" autocomplete="new-password" placeholder="Confirm password">
+      </label>
+    </div>
+    <div class="actions">
+      <button class="primary" id="resetButton" onclick="saveNewPassword()">Save New Password</button>
+    </div>
+    <div id="resetMsg" class="small" style="margin-top:10px;text-align:center"></div>
+  </div>
+</div>
 </div>
 <nav>
   <button data-nav="home" class="active" onclick="show('home')">⌂<br>Home</button>
@@ -195,7 +215,52 @@ async function login(){
   if(error){msg(error.message,true);return}
   currentUser=d.user; await startApp();
 }
-async function logout(){await sb.auth.signOut();currentUser=null;data={clients:[],projects:[],services:[]};document.getElementById('authModal').style.display='flex';msg('Signed out.');}
+async function saveNewPassword(){
+  const password=resetPassword.value;
+  const confirm=resetPassword2.value;
+
+  if(!password||!confirm){
+    resetMsg.textContent='Enter and confirm your new password.';
+    resetMsg.style.color='#ff8a9d';
+    return;
+  }
+
+  if(password.length<6){
+    resetMsg.textContent='Password must be at least 6 characters.';
+    resetMsg.style.color='#ff8a9d';
+    return;
+  }
+
+  if(password!==confirm){
+    resetMsg.textContent='Passwords do not match.';
+    resetMsg.style.color='#ff8a9d';
+    return;
+  }
+
+  resetButton.disabled=true;
+  resetMsg.textContent='Saving password…';
+  resetMsg.style.color='#6fe0c8';
+
+  const {error}=await sb.auth.updateUser({password});
+
+  resetButton.disabled=false;
+
+  if(error){
+    resetMsg.textContent=error.message;
+    resetMsg.style.color='#ff8a9d';
+    return;
+  }
+
+  resetMsg.textContent='Password updated successfully. You can now sign in.';
+  resetMsg.style.color='#6fe0c8';
+
+  setTimeout(()=>{
+    document.getElementById('resetModal').style.display='none';
+    document.getElementById('authModal').style.display='flex';
+    loginPassword.value='';
+  },1200);
+}
+  async function logout(){await sb.auth.signOut();currentUser=null;data={clients:[],projects:[],services:[]};document.getElementById('authModal').style.display='flex';msg('Signed out.');}
 
 async function startApp(){
   document.getElementById('authModal').style.display='none';
@@ -315,7 +380,21 @@ function downloadBackup(){const blob=new Blob([JSON.stringify(data,null,2)],{typ
   const {data:d}=await sb.auth.getSession();
   if(d.session){currentUser=d.session.user;await startApp();}
   else document.getElementById('authModal').style.display='flex';
-  sb.auth.onAuthStateChange(async(_event,session)=>{if(session&&!currentUser){currentUser=session.user;await startApp()}if(!session){currentUser=null;document.getElementById('authModal').style.display='flex'}});
+  sb.auth.onAuthStateChange(async(event,session)=>{
+  if(event==='PASSWORD_RECOVERY'){
+    document.getElementById('authModal').style.display='none';
+    document.getElementById('resetModal').style.display='flex';
+    return;
+  }
+  if(session&&!currentUser){
+    currentUser=session.user;
+    await startApp();
+  }
+  if(!session){
+    currentUser=null;
+    document.getElementById('authModal').style.display='flex';
+  }
+});
 })();
 </script>
 </body>
