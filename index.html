@@ -377,25 +377,47 @@ function downloadBackup(){const blob=new Blob([JSON.stringify(data,null,2)],{typ
 // Start: restore an existing session if present, otherwise show login.
 (async()=>{
   loginEmail.value='dazzleprime27@gmail.com';
-  const {data:d}=await sb.auth.getSession();
-  if(d.session){currentUser=d.session.user;await startApp();}
-  else document.getElementById('authModal').style.display='flex';
+
+  let recoveryMode=window.location.hash.includes('type=recovery');
+
   sb.auth.onAuthStateChange(async(event,session)=>{
-  if(event==='PASSWORD_RECOVERY'){
-    document.getElementById('authModal').style.display='none';
-    document.getElementById('resetModal').style.display='flex';
-    return;
-  }
-  if(session&&!currentUser){
-    currentUser=session.user;
-    await startApp();
-  }
-  if(!session){
-    currentUser=null;
+    if(event==='PASSWORD_RECOVERY'){
+      recoveryMode=true;
+      currentUser=session?.user||null;
+      document.getElementById('authModal').style.display='none';
+      document.getElementById('resetModal').style.display='flex';
+      return;
+    }
+
+    if(session&&!currentUser){
+      currentUser=session.user;
+      if(!recoveryMode) await startApp();
+    }
+
+    if(!session){
+      currentUser=null;
+      if(!recoveryMode){
+        document.getElementById('authModal').style.display='flex';
+      }
+    }
+  });
+
+  const {data:d}=await sb.auth.getSession();
+
+  if(d.session){
+    currentUser=d.session.user;
+
+    if(recoveryMode){
+      document.getElementById('authModal').style.display='none';
+      document.getElementById('resetModal').style.display='flex';
+    }else{
+      await startApp();
+    }
+  }else{
     document.getElementById('authModal').style.display='flex';
   }
-});
 })();
+
 </script>
 </body>
 </html>
