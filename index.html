@@ -100,27 +100,8 @@ nav{position:fixed;z-index:20;bottom:12px;left:50%;transform:translateX(-50%);wi
     <div class="actions"><button class="primary" id="loginButton" onclick="login()">Sign In</button></div>
     <div id="loginMsg" class="small" style="margin-top:10px;text-align:center"></div>
   </div>
-<div class="overlay" id="resetModal" style="display:none;background:#070b16f5;z-index:110">
-  <div class="modal" style="max-width:430px">
-    <h3>Create a new password</h3>
-    <p class="small" style="margin-top:-8px;margin-bottom:14px">
-      Enter your new Dazzel Creator Hub password.
-    </p>
-    <div class="form">
-      <label>New password
-        <input id="resetPassword" type="password" autocomplete="new-password" placeholder="New password">
-      </label>
-      <label>Confirm password
-        <input id="resetPassword2" type="password" autocomplete="new-password" placeholder="Confirm password">
-      </label>
-    </div>
-    <div class="actions">
-      <button class="primary" id="resetButton" onclick="saveNewPassword()">Save New Password</button>
-    </div>
-    <div id="resetMsg" class="small" style="margin-top:10px;text-align:center"></div>
-  </div>
 </div>
-</div>
+<div class="overlay" id="resetModal" style="display:none;background:#070b16f5;z-index:110"><div class="modal" style="max-width:430px"><h3>Create a new password</h3><p class="small" style="margin-top:-8px;margin-bottom:14px">Enter your new Dazzel Creator Hub password.</p><div class="form"><label>New password<input id="resetPassword" type="password" autocomplete="new-password" placeholder="New password"></label><label>Confirm password<input id="resetPassword2" type="password" autocomplete="new-password" placeholder="Confirm password"></label></div><div class="actions"><button class="primary" id="resetButton" onclick="saveNewPassword()">Save New Password</button></div><div id="resetMsg" class="small" style="margin-top:10px;text-align:center"></div></div></div>
 <nav>
   <button data-nav="home" class="active" onclick="show('home')">⌂<br>Home</button>
   <button data-nav="projects" onclick="show('projects')">▣<br>Projects</button>
@@ -190,238 +171,137 @@ nav{position:fixed;z-index:20;bottom:12px;left:50%;transform:translateX(-50%);wi
 <label>Notes<textarea id="eNotes"></textarea></label>
 </div><div class="actions"><button class="secondary" onclick="closeModals()">Cancel</button><button class="primary" onclick="saveEditProject()">Save Changes</button></div></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL='https://uvttadqoyagggwqselax.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_vY-TBEffEg5uiCYs2SpRxg_GT9E8MXm';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 let data={clients:[],projects:[],services:[]};
 let currentUser=null;
+let recoveryMode=window.location.hash.includes('type=recovery');
 let editingProjectId=null,editingClientId=null,editingServiceId=null,editingPaymentProjectId=null,editingPaymentIndex=null;
 
 function rupee(n){return '₹'+Number(n||0).toLocaleString('en-IN')}
 function esc(s){return String(s??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]))}
 function show(id){document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.nav===id));renderAll()}
 function openClient(){document.getElementById('clientModal').classList.add('show')}
-function closeModals(){document.querySelectorAll('.overlay').forEach(x=>{if(x.id!=='authModal')x.classList.remove('show')})}
-function setBusy(b){document.querySelectorAll('button').forEach(x=>{if(x.id!=='loginButton')x.disabled=b})}
+function closeModals(){document.querySelectorAll('.overlay').forEach(x=>{if(x.id!=='authModal'&&x.id!=='resetModal')x.classList.remove('show')})}
 function msg(t,error=false){const el=document.getElementById('loginMsg');if(el){el.textContent=t;el.style.color=error?'#ff8a9d':'#6fe0c8'}}
+function resetMsgText(t,error=false){const el=document.getElementById('resetMsg');if(el){el.textContent=t;el.style.color=error?'#ff8a9d':'#6fe0c8'}}
+function showAuth(){document.getElementById('authModal').style.display='flex'}
+function showReset(){document.getElementById('authModal').style.display='none';document.getElementById('resetModal').style.display='flex'}
+function showDataError(label,error){console.error(label,error);alert('Dazzel could not load '+label+'.\n\n'+(error?.message||error||'Unknown Supabase error')+'\n\nThis is a database/permission issue, not an internet problem.')}
 
 async function login(){
-  const email=loginEmail.value.trim(), password=loginPassword.value;
+  const email=loginEmail.value.trim(),password=loginPassword.value;
   if(!email||!password){msg('Enter your email and password.',true);return}
   loginButton.disabled=true;msg('Signing in…');
   const {data:d,error}=await sb.auth.signInWithPassword({email,password});
   loginButton.disabled=false;
   if(error){msg(error.message,true);return}
-  currentUser=d.user; await startApp();
+  currentUser=d.user;
+  await startApp();
 }
+async function logout(){await sb.auth.signOut();currentUser=null;data={clients:[],projects:[],services:[]};showAuth();msg('Signed out.')}
+
 async function saveNewPassword(){
-  const password=resetPassword.value;
-  const confirm=resetPassword2.value;
-
-  if(!password||!confirm){
-    resetMsg.textContent='Enter and confirm your new password.';
-    resetMsg.style.color='#ff8a9d';
-    return;
-  }
-
-  if(password.length<6){
-    resetMsg.textContent='Password must be at least 6 characters.';
-    resetMsg.style.color='#ff8a9d';
-    return;
-  }
-
-  if(password!==confirm){
-    resetMsg.textContent='Passwords do not match.';
-    resetMsg.style.color='#ff8a9d';
-    return;
-  }
-
-  resetButton.disabled=true;
-  resetMsg.textContent='Saving password…';
-  resetMsg.style.color='#6fe0c8';
-
+  const password=resetPassword.value,confirm=resetPassword2.value;
+  if(!password||!confirm){resetMsgText('Enter and confirm your new password.',true);return}
+  if(password.length<6){resetMsgText('Password must be at least 6 characters.',true);return}
+  if(password!==confirm){resetMsgText('Passwords do not match.',true);return}
+  resetButton.disabled=true;resetMsgText('Saving password…');
   const {error}=await sb.auth.updateUser({password});
-
   resetButton.disabled=false;
-
-  if(error){
-    resetMsg.textContent=error.message;
-    resetMsg.style.color='#ff8a9d';
-    return;
-  }
-
-  resetMsg.textContent='Password updated successfully. You can now sign in.';
-  resetMsg.style.color='#6fe0c8';
-
-  setTimeout(()=>{
-    document.getElementById('resetModal').style.display='none';
-    document.getElementById('authModal').style.display='flex';
-    loginPassword.value='';
-  },1200);
+  if(error){resetMsgText(error.message,true);return}
+  resetMsgText('Password updated successfully. You can now sign in.');
+  setTimeout(()=>{document.getElementById('resetModal').style.display='none';showAuth();loginPassword.value=''},1200);
 }
-  async function logout(){await sb.auth.signOut();currentUser=null;data={clients:[],projects:[],services:[]};document.getElementById('authModal').style.display='flex';msg('Signed out.');}
 
 async function startApp(){
+  if(recoveryMode){showReset();return}
   document.getElementById('authModal').style.display='none';
-  try{await loadOnlineData();renderAll();}
-  catch(e){console.error(e);alert('Could not load your Dazzel data. Please check your internet connection and Supabase setup.');}
+  try{await loadOnlineData();renderAll()}
+  catch(e){showAuth();showDataError('your online data',e)}
 }
 
 async function loadOnlineData(){
-  const [cr,pr,pyr,sr]=await Promise.all([
-    sb.from('clients').select('*').order('created_at',{ascending:true}),
-    sb.from('projects').select('*').order('created_at',{ascending:true}),
-    sb.from('payments').select('*').order('payment_date',{ascending:false}),
-    sb.from('services').select('*').order('created_at',{ascending:true})
-  ]);
-  for(const r of [cr,pr,pyr,sr])if(r.error)throw r.error;
-  data.clients=(cr.data||[]).map(c=>({id:c.id,name:c.name,business:c.business||'',phone:c.phone||''}));
-  data.services=(sr.data||[]).map(s=>({id:String(s.id),dbId:s.id,category:s.category,name:s.name,price:Number(s.reference_price||0)}));
-  data.projects=(pr.data||[]).map(p=>({
+  const queries=[
+    ['clients',()=>sb.from('clients').select('*').order('created_at',{ascending:true})],
+    ['projects',()=>sb.from('projects').select('*').order('created_at',{ascending:true})],
+    ['payments',()=>sb.from('payments').select('*').order('payment_date',{ascending:false})],
+    ['services',()=>sb.from('services').select('*').order('created_at',{ascending:true})]
+  ];
+  const results={};
+  for(const [name,fn] of queries){const r=await fn();if(r.error)throw Object.assign(new Error(r.error.message),{table:name,code:r.error.code,details:r.error.details,hint:r.error.hint});results[name]=r.data||[]}
+  data.clients=results.clients.map(c=>({id:c.id,name:c.name,business:c.business||'',phone:c.phone||''}));
+  data.services=results.services.map(s=>({id:String(s.id),dbId:s.id,category:s.category||'',name:s.name||'',price:Number(s.reference_price||0)}));
+  data.projects=results.projects.map(p=>({
     id:p.id,clientId:p.client_id,name:p.name,serviceId:p.service_id==null?'':String(p.service_id),service:p.service||p.name,category:p.category||'',
     list:Number(p.list_price||0),discount:Number(p.discount||0),offer:Number(p.offer_price||0),paid:Number(p.paid||0),status:p.status||'Pending',notes:p.notes||'',deadline:p.deadline||'',created:p.created_at,
-    payments:(pyr.data||[]).filter(x=>x.project_id===p.id).map(x=>({dbId:x.id,amount:Number(x.amount||0),date:x.payment_date||'',mode:x.mode||''}))
+    payments:results.payments.filter(x=>String(x.project_id)===String(p.id)).map(x=>({dbId:x.id,amount:Number(x.amount||0),date:x.payment_date||'',mode:x.mode||''}))
   }));
   if(!data.services.length){
-    const defaults=[
-      {category:'Promotional Videos',name:'AI Promo Video',reference_price:0},
-      {category:'Social Media Content',name:'Social Media Video',reference_price:0},
-      {category:'Poster & Design',name:'Poster / Creative Design',reference_price:0}
-    ];
-    const {data:ins,error}=await sb.from('services').insert(defaults).select('*');
-    if(error)throw error;
+    const defaults=[{category:'Promotional Videos',name:'AI Promo Video',reference_price:0},{category:'Social Media Content',name:'Social Media Video',reference_price:0},{category:'Poster & Design',name:'Poster / Creative Design',reference_price:0}];
+    const {data:ins,error}=await sb.from('services').insert(defaults).select('*');if(error)throw Object.assign(new Error(error.message),{table:'services',code:error.code,details:error.details,hint:error.hint});
     data.services=(ins||[]).map(s=>({id:String(s.id),dbId:s.id,category:s.category,name:s.name,price:Number(s.reference_price||0)}));
   }
 }
 
 async function saveClient(){
-  const name=cName.value.trim(),business=cBusiness.value.trim(),phone=cPhone.value.trim();
-  if(!name){alert('Client name is required.');return}
-  const {data:row,error}=await sb.from('clients').insert({name,business,phone}).select('*').single();
-  if(error){alert(error.message);return}
-  data.clients.push({id:row.id,name:row.name,business:row.business||'',phone:row.phone||''});
-  ['cName','cBusiness','cPhone'].forEach(id=>document.getElementById(id).value='');closeModals();renderAll();show('clients');
+  const name=cName.value.trim(),business=cBusiness.value.trim(),phone=cPhone.value.trim();if(!name){alert('Client name is required.');return}
+  const {data:row,error}=await sb.from('clients').insert({name,business,phone}).select('*').single();if(error){alert(error.message);return}
+  data.clients.push({id:row.id,name:row.name,business:row.business||'',phone:row.phone||''});['cName','cBusiness','cPhone'].forEach(id=>document.getElementById(id).value='');closeModals();renderAll();show('clients')
 }
-
-function fillClientSelect(){pClient.innerHTML=data.clients.map(c=>`<option value="${c.id}">${esc(c.name)}${c.business?' — '+esc(c.business):''}</option>`).join('')}
+function fillClientSelect(){pClient.innerHTML=data.clients.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}${c.business?' — '+esc(c.business):''}</option>`).join('')}
 function fillCategorySelect(){const cats=[...new Set(data.services.map(x=>x.category))];pCategory.innerHTML=cats.map(c=>`<option>${esc(c)}</option>`).join('');fillServiceSelect()}
-function fillServiceSelect(){const list=data.services.filter(x=>x.category===pCategory.value);pService.innerHTML=list.map(x=>`<option value="${x.id}">${esc(x.name)}${x.price?` — Ref ${rupee(x.price)}`:''}</option>`).join('');setProjectServiceName()}
-function setProjectServiceName(){const sv=data.services.find(x=>x.id===pService.value);if(sv&&!pName.value.trim())pName.value=sv.name}
+function fillServiceSelect(){const list=data.services.filter(x=>x.category===pCategory.value);pService.innerHTML=list.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}${x.price?` — Ref ${rupee(x.price)}`:''}</option>`).join('');setProjectServiceName()}
+function setProjectServiceName(){const sv=data.services.find(x=>x.id===String(pService.value));if(sv&&!pName.value.trim())pName.value=sv.name}
 function toggleInitialPaymentFields(){const yes=Number(pPaid.value)>0;initialPaymentFields.style.display=yes?'block':'none';if(yes&&!pPayDate.value)pPayDate.value=new Date().toISOString().slice(0,10)}
-function openProject(){
-  if(!data.clients.length){openClient();alert('Create the client first. Then create the project.');return}
-  fillClientSelect();fillCategorySelect();
-  pName.value='';pList.value='';pDiscount.value='';pOffer.value='';pPaid.value='0';pStatus.value='Pending';pNotes.value='';
-  pPayDate.value=new Date().toISOString().slice(0,10);pPayMode.value='UPI';toggleInitialPaymentFields();projectModal.classList.add('show');
-}
+function openProject(){if(!data.clients.length){openClient();alert('Create the client first. Then create the project.');return}fillClientSelect();fillCategorySelect();pName.value='';pList.value='';pDiscount.value='';pOffer.value='';pPaid.value='0';pStatus.value='Pending';pNotes.value='';pPayDate.value=new Date().toISOString().slice(0,10);pPayMode.value='UPI';toggleInitialPaymentFields();projectModal.classList.add('show')}
 async function saveProject(){
-  const clientId=Number(pClient.value),name=pName.value.trim(),list=Math.max(0,Number(pList.value)||0),discount=Math.max(0,Number(pDiscount.value)||0),offer=Math.max(0,Number(pOffer.value)||0),paid=Math.max(0,Number(pPaid.value)||0);
-  if(!name){alert('Project name is required.');return}
-  if(offer>list&&list>0){alert('Offer price cannot be more than list price.');return}
-  if(paid>offer){alert('Paid cannot be more than the offer price.');return}
-  if(paid>0&&!pPayDate.value){alert('Enter the payment date for the amount already paid.');return}
-  const sv=data.services.find(x=>x.id===pService.value);
-  const payload={client_id:clientId,service_id:sv?.dbId||null,name,service:sv?.name||name,category:sv?.category||'',list_price:list,discount,offer_price:offer,paid:0,status:pStatus.value,notes:pNotes.value.trim(),deadline:null};
-  const {data:row,error}=await sb.from('projects').insert(payload).select('*').single();
-  if(error){alert(error.message);return}
+  const clientId=pClient.value,name=pName.value.trim(),list=Math.max(0,Number(pList.value)||0),discount=Math.max(0,Number(pDiscount.value)||0),offer=Math.max(0,Number(pOffer.value)||0),paid=Math.max(0,Number(pPaid.value)||0);
+  if(!name){alert('Project name is required.');return}if(offer>list&&list>0){alert('Offer price cannot be more than list price.');return}if(paid>offer){alert('Paid cannot be more than the offer price.');return}if(paid>0&&!pPayDate.value){alert('Enter the payment date for the amount already paid.');return}
+  const sv=data.services.find(x=>x.id===String(pService.value));const payload={client_id:clientId,service_id:sv?.dbId||null,name,service:sv?.name||name,category:sv?.category||'',list_price:list,discount,offer_price:offer,paid:0,status:pStatus.value,notes:pNotes.value.trim(),deadline:null};
+  const {data:row,error}=await sb.from('projects').insert(payload).select('*').single();if(error){alert(error.message);return}
   const project={id:row.id,clientId,name,serviceId:sv?.id||'',service:sv?.name||name,category:sv?.category||'',list,discount,offer,paid:0,status:pStatus.value,notes:pNotes.value.trim(),deadline:'',created:row.created_at,payments:[]};
-  if(paid>0){
-    const {data:pay,error:pe}=await sb.from('payments').insert({project_id:row.id,amount:paid,payment_date:pPayDate.value,mode:pPayMode.value}).select('*').single();
-    if(pe){await sb.from('projects').delete().eq('id',row.id);alert(pe.message);return}
-    await sb.from('projects').update({paid}).eq('id',row.id);
-    project.paid=paid;project.payments=[{dbId:pay.id,amount:paid,date:pay.payment_date,mode:pay.mode}];
-  }
-  data.projects.push(project);closeModals();renderAll();show('projects');
+  if(paid>0){const {data:pay,error:pe}=await sb.from('payments').insert({project_id:row.id,amount:paid,payment_date:pPayDate.value,mode:pPayMode.value}).select('*').single();if(pe){await sb.from('projects').delete().eq('id',row.id);alert(pe.message);return}await sb.from('projects').update({paid}).eq('id',row.id);project.paid=paid;project.payments=[{dbId:pay.id,amount:paid,date:pay.payment_date,mode:pay.mode}]}
+  data.projects.push(project);closeModals();renderAll();show('projects')
 }
-
-function openEditProject(id){const p=data.projects.find(x=>x.id===id);if(!p)return;editingProjectId=id;eName.value=p.name;eList.value=p.list;eDiscount.value=p.discount;eOffer.value=p.offer;ePaid.value=p.paid;ePaid.readOnly=true;eStatus.value=p.status;eNotes.value=p.notes||'';editProjectModal.classList.add('show')}
-async function saveEditProject(){
-  const p=data.projects.find(x=>x.id===editingProjectId);if(!p)return;
-  const offer=Math.max(0,Number(eOffer.value)||0),list=Math.max(0,Number(eList.value)||0),discount=Math.max(0,Number(eDiscount.value)||0);
-  if(!eName.value.trim()){alert('Project name is required.');return}
-  if(offer>list&&list>0){alert('Offer price cannot be more than list price.');return}
-  if(p.paid>offer){alert('Offer price cannot be below the amount already paid.');return}
-  const changes={name:eName.value.trim(),list_price:list,discount,offer_price:offer,status:eStatus.value,notes:eNotes.value.trim()};
-  const {error}=await sb.from('projects').update(changes).eq('id',p.id);if(error){alert(error.message);return}
-  Object.assign(p,{name:changes.name,list:changes.list_price,discount:changes.discount,offer:changes.offer_price,status:changes.status,notes:changes.notes});editingProjectId=null;closeModals();renderAll();show('projects');
-}
-
-function openClientProfile(id){const c=data.clients.find(x=>x.id===id);if(!c)return;const ps=data.projects.filter(p=>p.clientId===id),paid=ps.reduce((a,p)=>a+p.paid,0),out=ps.reduce((a,p)=>a+Math.max(0,p.offer-p.paid),0),services=[...new Set(ps.map(p=>p.name).filter(Boolean))];profileTitle.textContent=c.name;profileBody.innerHTML=`<div class="card" style="padding:14px;margin-bottom:12px"><p><b>${esc(c.business||'')}</b></p><p class="small">${esc(c.phone||'No phone')}</p><p class="small">${ps.length} project${ps.length===1?'':'s'} · Paid <span class="money green">${rupee(paid)}</span> · Outstanding <span class="money ${out?'red':'green'}">${rupee(out)}</span></p>${ps.length>=2?'<span class="chip">Repeat Client</span>':''}</div><div class="title">Project History</div><div>${ps.length?ps.slice().reverse().map(projectCard).join(''):'<div class="empty">No projects yet.</div>'}</div><div class="title" style="margin-top:14px">Services Taken</div><p class="small">${services.length?services.map(esc).join(' · '):'None yet'}</p>`;clientProfileModal.classList.add('show')}
-
-function openEditClient(id){const c=data.clients.find(x=>x.id===id);if(!c)return;editingClientId=id;ecName.value=c.name;ecBusiness.value=c.business||'';ecPhone.value=c.phone||'';editClientModal.classList.add('show')}
-async function saveEditClient(){const c=data.clients.find(x=>x.id===editingClientId);if(!c)return;if(!ecName.value.trim()){alert('Client name is required.');return}const changes={name:ecName.value.trim(),business:ecBusiness.value.trim(),phone:ecPhone.value.trim()};const {error}=await sb.from('clients').update(changes).eq('id',c.id);if(error){alert(error.message);return}Object.assign(c,changes);closeModals();renderAll();show('clients')}
-
+function openEditProject(id){const p=data.projects.find(x=>String(x.id)===String(id));if(!p)return;editingProjectId=id;eName.value=p.name;eList.value=p.list;eDiscount.value=p.discount;eOffer.value=p.offer;ePaid.value=p.paid;ePaid.readOnly=true;eStatus.value=p.status;eNotes.value=p.notes||'';editProjectModal.classList.add('show')}
+async function saveEditProject(){const p=data.projects.find(x=>String(x.id)===String(editingProjectId));if(!p)return;const offer=Math.max(0,Number(eOffer.value)||0),list=Math.max(0,Number(eList.value)||0),discount=Math.max(0,Number(eDiscount.value)||0);if(!eName.value.trim()){alert('Project name is required.');return}if(offer>list&&list>0){alert('Offer price cannot be more than list price.');return}if(p.paid>offer){alert('Offer price cannot be below the amount already paid.');return}const changes={name:eName.value.trim(),list_price:list,discount,offer_price:offer,status:eStatus.value,notes:eNotes.value.trim()};const {error}=await sb.from('projects').update(changes).eq('id',p.id);if(error){alert(error.message);return}Object.assign(p,{name:changes.name,list:changes.list_price,discount:changes.discount,offer:changes.offer_price,status:changes.status,notes:changes.notes});editingProjectId=null;closeModals();renderAll();show('projects')}
+function openClientProfile(id){const c=data.clients.find(x=>String(x.id)===String(id));if(!c)return;const ps=data.projects.filter(p=>String(p.clientId)===String(id)),paid=ps.reduce((a,p)=>a+p.paid,0),out=ps.reduce((a,p)=>a+Math.max(0,p.offer-p.paid),0),services=[...new Set(ps.map(p=>p.name).filter(Boolean))];profileTitle.textContent=c.name;profileBody.innerHTML=`<div class="card" style="padding:14px;margin-bottom:12px"><p><b>${esc(c.business||'')}</b></p><p class="small">${esc(c.phone||'No phone')}</p><p class="small">${ps.length} project${ps.length===1?'':'s'} · Paid <span class="money green">${rupee(paid)}</span> · Outstanding <span class="money ${out?'red':'green'}">${rupee(out)}</span></p>${ps.length>=2?'<span class="chip">Repeat Client</span>':''}</div><div class="title">Project History</div><div>${ps.length?ps.slice().reverse().map(projectCard).join(''):'<div class="empty">No projects yet.</div>'}</div><div class="title" style="margin-top:14px">Services Taken</div><p class="small">${services.length?services.map(esc).join(' · '):'None yet.'}</p>`;clientProfileModal.classList.add('show')}
+function openEditClient(id){const c=data.clients.find(x=>String(x.id)===String(id));if(!c)return;editingClientId=id;ecName.value=c.name;ecBusiness.value=c.business||'';ecPhone.value=c.phone||'';editClientModal.classList.add('show')}
+async function saveEditClient(){const c=data.clients.find(x=>String(x.id)===String(editingClientId));if(!c)return;const changes={name:ecName.value.trim(),business:ecBusiness.value.trim(),phone:ecPhone.value.trim()};if(!changes.name){alert('Client name is required.');return}const {error}=await sb.from('clients').update(changes).eq('id',c.id);if(error){alert(error.message);return}Object.assign(c,changes);closeModals();renderAll();show('clients')}
 function openService(){serviceModal.classList.add('show')}
 async function saveService(){const category=sCategory.value.trim(),name=sName.value.trim(),price=Math.max(0,Number(sPrice.value)||0);if(!category||!name){alert('Category and service name are required.');return}const {data:row,error}=await sb.from('services').insert({category,name,reference_price:price}).select('*').single();if(error){alert(error.message);return}data.services.push({id:String(row.id),dbId:row.id,category:row.category,name:row.name,price:Number(row.reference_price||0)});sCategory.value='';sName.value='';sPrice.value='';closeModals();renderAll();show('services')}
 function openEditService(id){const sv=data.services.find(x=>x.id===String(id));if(!sv)return;editingServiceId=sv.id;esCategory.value=sv.category;esName.value=sv.name;esPrice.value=sv.price||'';editServiceModal.classList.add('show')}
 async function saveEditService(){const sv=data.services.find(x=>x.id===editingServiceId);if(!sv)return;if(!esCategory.value.trim()||!esName.value.trim()){alert('Category and service name are required.');return}const changes={category:esCategory.value.trim(),name:esName.value.trim(),reference_price:Math.max(0,Number(esPrice.value)||0)};const {error}=await sb.from('services').update(changes).eq('id',sv.dbId);if(error){alert(error.message);return}Object.assign(sv,{category:changes.category,name:changes.name,price:changes.reference_price});closeModals();renderAll();show('services')}
-
-function openPayment(projectId){const choices=data.projects.filter(p=>p.status!=='Cancelled'&&p.offer-p.paid>0);if(!choices.length){alert('There is no project with an outstanding balance.');return}payProject.innerHTML=choices.map(p=>`<option value="${p.id}">${esc(p.name)} — ${esc(clientName(p.clientId))} — Balance ${rupee(p.offer-p.paid)}</option>`).join('');if(projectId&&choices.some(p=>p.id===projectId))payProject.value=projectId;const selected=data.projects.find(p=>p.id===Number(payProject.value));payAmount.value=selected?Math.max(0,selected.offer-selected.paid):'';payDate.value=new Date().toISOString().slice(0,10);payMode.value='UPI';paymentModal.classList.add('show')}
-async function savePayment(){const p=data.projects.find(x=>x.id===Number(payProject.value)),amount=Math.max(0,Number(payAmount.value)||0);if(!p){alert('Select a project.');return}const balance=Math.max(0,p.offer-p.paid);if(amount<=0){alert('Enter a payment amount.');return}if(amount>balance){alert('Payment cannot be more than the remaining balance.');return}const {data:pay,error}=await sb.from('payments').insert({project_id:p.id,amount,payment_date:payDate.value||new Date().toISOString().slice(0,10),mode:payMode.value}).select('*').single();if(error){alert(error.message);return}const newPaid=p.paid+amount;const {error:ue}=await sb.from('projects').update({paid:newPaid}).eq('id',p.id);if(ue){await sb.from('payments').delete().eq('id',pay.id);alert(ue.message);return}p.paid=newPaid;p.payments.push({dbId:pay.id,amount:pay.amount,date:pay.payment_date,mode:pay.mode});closeModals();renderAll();show('finance')}
-
-function openEditPayment(projectId,index){const p=data.projects.find(x=>x.id===projectId),x=p?.payments?.[index];if(!p||!x)return;editingPaymentProjectId=projectId;editingPaymentIndex=index;epProject.value=p.name;epAmount.value=x.amount;epDate.value=x.date;epMode.value=x.mode;editPaymentModal.classList.add('show')}
-async function saveEditPayment(){const p=data.projects.find(x=>x.id===editingPaymentProjectId),x=p?.payments?.[editingPaymentIndex];if(!p||!x)return;const amount=Math.max(0,Number(epAmount.value)||0),totalWithoutCurrent=p.paid-x.amount,maxAllowed=Math.max(0,p.offer-totalWithoutCurrent);if(amount<=0){alert('Enter a payment amount.');return}if(amount>maxAllowed){alert('This amount would exceed the project offer price.');return}const {error}=await sb.from('payments').update({amount,payment_date:epDate.value||x.date,mode:epMode.value}).eq('id',x.dbId);if(error){alert(error.message);return}const newPaid=totalWithoutCurrent+amount;const {error:ue}=await sb.from('projects').update({paid:newPaid}).eq('id',p.id);if(ue){alert(ue.message);return}p.paid=newPaid;x.amount=amount;x.date=epDate.value||x.date;x.mode=epMode.value;closeModals();renderAll();show('finance')}
-
-function clientName(id){const c=data.clients.find(x=>x.id===Number(id));return c?c.name:'Unknown Client'}
-function projectCard(p){const bal=Math.max(0,p.offer-p.paid);return `<div class="project"><div class="row"><b>${esc(p.name)}</b><span class="chip">${esc(p.status)}</span></div><small>${esc(clientName(p.clientId))} · Offer ${rupee(p.offer)} · Balance ${rupee(bal)}</small><div style="margin-top:6px">Paid <span class="money green">${rupee(p.paid)}</span> · Balance <span class="money ${bal?'red':'green'}">${rupee(bal)}</span>${bal&&p.status==='Finished'?' · Payment Pending':''}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${bal?`<button class="primary" onclick="openPayment(${p.id})">Record Payment</button>`:''}<button class="secondary" onclick="openEditProject(${p.id})">Edit Project</button></div></div>`}
-
-function renderHome(){const active=data.projects.filter(p=>!['Finished','Cancelled'].includes(p.status)),finished=data.projects.filter(p=>p.status==='Finished'),valid=data.projects.filter(p=>p.status!=='Cancelled'),revenue=valid.reduce((a,p)=>a+p.paid,0),pending=valid.reduce((a,p)=>a+Math.max(0,p.offer-p.paid),0),repeat=data.clients.filter(c=>data.projects.filter(p=>p.clientId===c.id).length>=2).length,now=new Date(),month=now.getMonth(),year=now.getFullYear(),monthRevenue=valid.reduce((t,p)=>t+(p.payments||[]).filter(x=>{if(!x.date)return false;const d=new Date(x.date);return d.getMonth()===month&&d.getFullYear()===year}).reduce((a,x)=>a+x.amount,0),0);homeProjects.innerHTML=active.length?active.slice().reverse().slice(0,5).map(projectCard).join(''):'<div class="empty">No ongoing projects yet.</div>';statRevenue.textContent=rupee(revenue);statMonth.textContent=rupee(monthRevenue);statPending.textContent=rupee(pending);statActive.textContent=active.length;statFinished.textContent=finished.length;statClients.textContent=data.clients.length;statRepeat.textContent=repeat}
-function renderClients(){const q=(clientSearch?.value||'').toLowerCase().trim(),list=data.clients.filter(c=>!q||c.name.toLowerCase().includes(q)||String(c.business||'').toLowerCase().includes(q));clientList.innerHTML=list.length?list.map(c=>{const ps=data.projects.filter(p=>p.clientId===c.id),paid=ps.reduce((a,p)=>a+p.paid,0),out=ps.reduce((a,p)=>a+Math.max(0,p.offer-p.paid),0);return `<div class="item" onclick="openClientProfile(${c.id})" style="cursor:pointer"><div class="itemtop"><div><h4>${esc(c.name)}</h4><p>${esc(c.business||'No business name')} · ${esc(c.phone||'No phone')}</p></div><span class="chip">${ps.length>=2?'Repeat Client':'Client'}</span></div><p>${ps.length} project${ps.length===1?'':'s'} · Paid <span class="money green">${rupee(paid)}</span> · Outstanding <span class="money ${out?'red':'green'}">${rupee(out)}</span></p><p style="color:#cbd2ff">View client history →</p><button class="secondary" onclick="event.stopPropagation();openEditClient(${c.id})">Edit Client</button></div>`}).join(''):'<div class="empty">No clients yet.</div>'}
+function openPayment(projectId){const choices=data.projects.filter(p=>p.status!=='Cancelled'&&p.offer-p.paid>0);if(!choices.length){alert('There is no project with an outstanding balance.');return}payProject.innerHTML=choices.map(p=>`<option value="${esc(p.id)}">${esc(p.name)} — ${esc(clientName(p.clientId))} — Balance ${rupee(p.offer-p.paid)}</option>`).join('');if(projectId&&choices.some(p=>String(p.id)===String(projectId)))payProject.value=projectId;const selected=data.projects.find(p=>String(p.id)===String(payProject.value));payAmount.value=selected?Math.max(0,selected.offer-selected.paid):'';payDate.value=new Date().toISOString().slice(0,10);payMode.value='UPI';paymentModal.classList.add('show')}
+async function savePayment(){const p=data.projects.find(x=>String(x.id)===String(payProject.value)),amount=Math.max(0,Number(payAmount.value)||0);if(!p){alert('Select a project.');return}const balance=Math.max(0,p.offer-p.paid);if(amount<=0){alert('Enter a payment amount.');return}if(amount>balance){alert('Payment cannot be more than the remaining balance.');return}const {data:pay,error}=await sb.from('payments').insert({project_id:p.id,amount,payment_date:payDate.value||new Date().toISOString().slice(0,10),mode:payMode.value}).select('*').single();if(error){alert(error.message);return}const newPaid=p.paid+amount;const {error:ue}=await sb.from('projects').update({paid:newPaid}).eq('id',p.id);if(ue){await sb.from('payments').delete().eq('id',pay.id);alert(ue.message);return}p.paid=newPaid;p.payments.push({dbId:pay.id,amount:pay.amount,date:pay.payment_date,mode:pay.mode});closeModals();renderAll();show('finance')}
+function openEditPayment(projectId,index){const p=data.projects.find(x=>String(x.id)===String(projectId)),x=p?.payments?.[index];if(!p||!x)return;editingPaymentProjectId=projectId;editingPaymentIndex=index;epProject.value=p.name;epAmount.value=x.amount;epDate.value=x.date;epMode.value=x.mode;editPaymentModal.classList.add('show')}
+async function saveEditPayment(){const p=data.projects.find(x=>String(x.id)===String(editingPaymentProjectId)),x=p?.payments?.[editingPaymentIndex];if(!p||!x)return;const amount=Math.max(0,Number(epAmount.value)||0),totalWithoutCurrent=p.paid-x.amount,maxAllowed=Math.max(0,p.offer-totalWithoutCurrent);if(amount<=0){alert('Enter a payment amount.');return}if(amount>maxAllowed){alert('This amount would exceed the project offer price.');return}const {error}=await sb.from('payments').update({amount,payment_date:epDate.value||x.date,mode:epMode.value}).eq('id',x.dbId);if(error){alert(error.message);return}const newPaid=totalWithoutCurrent+amount;const {error:ue}=await sb.from('projects').update({paid:newPaid}).eq('id',p.id);if(ue){alert(ue.message);return}p.paid=newPaid;x.amount=amount;x.date=epDate.value||x.date;x.mode=epMode.value;closeModals();renderAll();show('finance')}
+function clientName(id){const c=data.clients.find(x=>String(x.id)===String(id));return c?c.name:'Unknown Client'}
+function projectCard(p){const bal=Math.max(0,p.offer-p.paid);return `<div class="project"><div class="row"><b>${esc(p.name)}</b><span class="chip">${esc(p.status)}</span></div><small>${esc(clientName(p.clientId))} · Offer ${rupee(p.offer)} · Balance ${rupee(bal)}</small><div style="margin-top:6px">Paid <span class="money green">${rupee(p.paid)}</span> · Balance <span class="money ${bal?'red':'green'}">${rupee(bal)}</span>${bal&&p.status==='Finished'?' · Payment Pending':''}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${bal?`<button class="primary" onclick="openPayment('${esc(p.id)}')">Record Payment</button>`:''}<button class="secondary" onclick="openEditProject('${esc(p.id)}')">Edit Project</button></div></div>`}
+function renderHome(){const active=data.projects.filter(p=>!['Finished','Cancelled'].includes(p.status)),finished=data.projects.filter(p=>p.status==='Finished'),valid=data.projects.filter(p=>p.status!=='Cancelled'),revenue=valid.reduce((a,p)=>a+p.paid,0),pending=valid.reduce((a,p)=>a+Math.max(0,p.offer-p.paid),0),repeat=data.clients.filter(c=>data.projects.filter(p=>String(p.clientId)===String(c.id)).length>=2).length,now=new Date(),month=now.getMonth(),year=now.getFullYear(),monthRevenue=valid.reduce((t,p)=>t+(p.payments||[]).filter(x=>{if(!x.date)return false;const d=new Date(x.date);return d.getMonth()===month&&d.getFullYear()===year}).reduce((a,x)=>a+x.amount,0),0);homeProjects.innerHTML=active.length?active.slice().reverse().slice(0,5).map(projectCard).join(''):'<div class="empty">No ongoing projects yet.</div>';statRevenue.textContent=rupee(revenue);statMonth.textContent=rupee(monthRevenue);statPending.textContent=rupee(pending);statActive.textContent=active.length;statFinished.textContent=finished.length;statClients.textContent=data.clients.length;statRepeat.textContent=repeat}
+function renderClients(){const q=(clientSearch?.value||'').toLowerCase().trim(),list=data.clients.filter(c=>!q||c.name.toLowerCase().includes(q)||String(c.business||'').toLowerCase().includes(q));clientList.innerHTML=list.length?list.map(c=>{const ps=data.projects.filter(p=>String(p.clientId)===String(c.id)),paid=ps.reduce((a,p)=>a+p.paid,0),out=ps.reduce((a,p)=>a+Math.max(0,p.offer-p.paid),0);return `<div class="item" onclick="openClientProfile('${esc(c.id)}')" style="cursor:pointer"><div class="itemtop"><div><h4>${esc(c.name)}</h4><p>${esc(c.business||'No business name')} · ${esc(c.phone||'No phone')}</p></div><span class="chip">${ps.length>=2?'Repeat Client':'Client'}</span></div><p>${ps.length} project${ps.length===1?'':'s'} · Paid <span class="money green">${rupee(paid)}</span> · Outstanding <span class="money ${out?'red':'green'}">${rupee(out)}</span></p><p style="color:#cbd2ff">View client history →</p><button class="secondary" onclick="event.stopPropagation();openEditClient('${esc(c.id)}')">Edit Client</button></div>`}).join(''):'<div class="empty">No clients yet.</div>'}
 function renderProjects(){const q=(projectSearch?.value||'').toLowerCase().trim(),list=data.projects.filter(p=>!q||p.name.toLowerCase().includes(q)||clientName(p.clientId).toLowerCase().includes(q));projectList.innerHTML=list.length?list.slice().reverse().map(projectCard).join(''):'<div class="empty">No projects yet.</div>'}
-function renderFinance(){const collected=data.projects.reduce((a,p)=>a+p.paid,0),outstanding=data.projects.reduce((a,p)=>a+Math.max(0,p.offer-p.paid),0);financeCollected.textContent=rupee(collected);financeOutstanding.textContent=rupee(outstanding);const rows=[];data.projects.forEach(p=>(p.payments||[]).forEach((x,i)=>rows.push({p,x,i})));rows.sort((a,b)=>String(b.x.date).localeCompare(String(a.x.date)));paymentHistory.innerHTML=rows.length?rows.map(r=>`<div class="project"><div class="row"><b>${esc(r.p.name)}</b><span class="money green">${rupee(r.x.amount)}</span></div><small>${esc(clientName(r.p.clientId))} · ${esc(r.x.date||'Earlier')} · ${esc(r.x.mode)}</small><button class="secondary" style="margin-top:8px" onclick="openEditPayment(${r.p.id},${r.i})">Edit Payment</button></div>`).join(''):'<div class="empty">No payments recorded yet.</div>'}
-function renderServices(){const groups={};data.services.forEach(x=>(groups[x.category]??=[]).push(x));serviceList.innerHTML=Object.keys(groups).map(cat=>`<div class="card"><div class="title">${esc(cat)}</div>${groups[cat].map(x=>`<div class="project"><div class="row"><b>${esc(x.name)}</b><span class="chip">${x.price?rupee(x.price):'Manual price'}</span></div><small>Reference only — project offer price can be changed.</small><button class="secondary" style="margin-top:8px" onclick="openEditService('${x.id}')">Edit Service</button></div>`).join('')}</div>`).join('')}
+function renderFinance(){const collected=data.projects.reduce((a,p)=>a+p.paid,0),outstanding=data.projects.reduce((a,p)=>a+Math.max(0,p.offer-p.paid),0);financeCollected.textContent=rupee(collected);financeOutstanding.textContent=rupee(outstanding);const rows=[];data.projects.forEach(p=>(p.payments||[]).forEach((x,i)=>rows.push({p,x,i})));rows.sort((a,b)=>String(b.x.date).localeCompare(String(a.x.date)));paymentHistory.innerHTML=rows.length?rows.map(r=>`<div class="project"><div class="row"><b>${esc(r.p.name)}</b><span class="money green">${rupee(r.x.amount)}</span></div><small>${esc(clientName(r.p.clientId))} · ${esc(r.x.date||'Earlier')} · ${esc(r.x.mode)}</small><button class="secondary" style="margin-top:8px" onclick="openEditPayment('${esc(r.p.id)}',${r.i})">Edit Payment</button></div>`).join(''):'<div class="empty">No payments recorded yet.</div>'}
+function renderServices(){const groups={};data.services.forEach(x=>(groups[x.category]??=[]).push(x));serviceList.innerHTML=Object.keys(groups).map(cat=>`<div class="card"><div class="title">${esc(cat)}</div>${groups[cat].map(x=>`<div class="project"><div class="row"><b>${esc(x.name)}</b><span class="chip">${x.price?rupee(x.price):'Manual price'}</span></div><small>Reference only — project offer price can be changed.</small><button class="secondary" style="margin-top:8px" onclick="openEditService('${esc(x.id)}')">Edit Service</button></div>`).join('')}</div>`).join('')}
 function renderAll(){renderHome();renderClients();renderProjects();renderFinance();renderServices()}
 function downloadBackup(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='dazzel-hub-online-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
 
-// Start: restore an existing session if present, otherwise show login.
 (async()=>{
   loginEmail.value='dazzleprime27@gmail.com';
-
-  let recoveryMode=
-    window.location.hash.includes('type=recovery') ||
-    new URLSearchParams(window.location.search).has('code');
-
   sb.auth.onAuthStateChange(async(event,session)=>{
-    if(event==='PASSWORD_RECOVERY'){
-      recoveryMode=true;
-      currentUser=session?.user||null;
-      document.getElementById('authModal').style.display='none';
-      document.getElementById('resetModal').style.display='flex';
-      return;
-    }
-
-    if(event==='INITIAL_SESSION'){
-      if(recoveryMode){
-        currentUser=session?.user||null;
-        document.getElementById('authModal').style.display='none';
-        document.getElementById('resetModal').style.display='flex';
-        return;
-      }
-
-      if(session){
-        currentUser=session.user;
-        await startApp();
-      }else{
-        document.getElementById('authModal').style.display='flex';
-      }
-      return;
-    }
-
-    if(event==='SIGNED_IN'&&session&&!recoveryMode){
-      currentUser=session.user;
-      await startApp();
-    }
-
-    if(event==='SIGNED_OUT'){
-      currentUser=null;
-      if(!recoveryMode){
-        document.getElementById('authModal').style.display='flex';
-      }
-    }
+    if(event==='PASSWORD_RECOVERY'){recoveryMode=true;currentUser=session?.user||null;showReset();return}
+    if(event==='SIGNED_OUT'){currentUser=null;data={clients:[],projects:[],services:[]};if(!recoveryMode)showAuth();return}
+    if(event==='SIGNED_IN'&&session&&!recoveryMode){currentUser=session.user;await startApp()}
   });
+  const {data:d,error}=await sb.auth.getSession();
+  if(error){showDataError('your sign-in session',error);return}
+  if(d.session){currentUser=d.session.user;if(recoveryMode)showReset();else await startApp()}
+  else showAuth();
 })();
-
 </script>
 </body>
 </html>
